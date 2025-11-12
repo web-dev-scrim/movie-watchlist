@@ -12,34 +12,57 @@ formElement.addEventListener("submit", async (event) => {
 
   moviesArrayForWatchList.length = 0;
 
-  const response = await fetch(
-    `http://www.omdbapi.com/?s=${encodeURIComponent(
-      inputValue
-    )}&apikey=${apikey}`
-  );
+  try {
+    const response = await fetch(
+      `https://www.omdbapi.com/?s=${encodeURIComponent(
+        inputValue
+      )}&apikey=${apikey}`
+    );
 
-  const data = await response.json();
-  console.log(data);
-  let imdbIds = [];
+    const data = await response.json();
+    console.log(data);
 
-  for (let movie of data.Search) {
-    imdbIds.push(movie.imdbID);
+    if (data.Response === "False") {
+      moviesContainerEl.innerHTML = `
+        <div style="text-align: center; padding: 50px 20px; color: #6B7280;">
+          <i class="fa-solid fa-film" style="font-size: 48px; margin-bottom: 20px;"></i>
+          <p style="font-size: 18px; font-weight: 600;">No movies found</p>
+          <p style="font-size: 14px;">${data.Error}</p>
+        </div>
+      `;
+      return;
+    }
+
+    let imdbIds = [];
+
+    for (let movie of data.Search) {
+      imdbIds.push(movie.imdbID);
+    }
+
+    const moviesResponse = await getMoviesByIds(imdbIds);
+    console.log(moviesResponse);
+
+    moviesArrayForWatchList.push(...moviesResponse);
+
+    renderMovies(moviesResponse);
+
+    inputElement.value = "";
+  } catch (error) {
+    console.error("Error fetching movies:", error);
+    moviesContainerEl.innerHTML = `
+      <div style="text-align: center; padding: 50px 20px; color: #6B7280;">
+        <i class="fa-solid fa-exclamation-triangle" style="font-size: 48px; margin-bottom: 20px;"></i>
+        <p style="font-size: 18px; font-weight: 600;">Something went wrong</p>
+        <p style="font-size: 14px;">Please try again later</p>
+      </div>
+    `;
   }
-
-  const moviesResponse = await getMoviesByIds(imdbIds);
-  console.log(moviesResponse);
-
-  moviesArrayForWatchList.push(...moviesResponse);
-
-  renderMovies(moviesResponse);
-
-  inputElement.value = "";
 });
 
 async function getMoviesByIds(imdbIds) {
   const responses = await Promise.all(
     imdbIds.map((id) =>
-      fetch(`http://www.omdbapi.com/?i=${id}&apikey=${apikey}`).then(
+      fetch(`https://www.omdbapi.com/?i=${id}&apikey=${apikey}`).then(
         (response) => response.json()
       )
     )
