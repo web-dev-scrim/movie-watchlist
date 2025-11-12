@@ -8,52 +8,77 @@ const apikey = "c906c7e9";
 formElement.addEventListener("submit", async (event) => {
   event.preventDefault();
   const inputValue = inputElement.value.trim();
-  console.log(inputValue);
+
+  if (!inputValue) return;
 
   moviesArrayForWatchList.length = 0;
 
+  // Show loading state
+  moviesContainerEl.innerHTML = `
+    <div style="text-align: center; padding: 50px 20px; color: #6B7280;">
+      <i class="fa-solid fa-spinner fa-spin" style="font-size: 48px; margin-bottom: 20px;"></i>
+      <p style="font-size: 18px; font-weight: 600;">Searching for movies...</p>
+    </div>
+  `;
+
   try {
-    const response = await fetch(
-      `https://www.omdbapi.com/?s=${encodeURIComponent(
-        inputValue
-      )}&apikey=${apikey}`
-    );
+    const searchUrl = `https://www.omdbapi.com/?s=${encodeURIComponent(
+      inputValue
+    )}&apikey=${apikey}`;
+    console.log("Fetching:", searchUrl);
+
+    const response = await fetch(searchUrl);
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
 
     const data = await response.json();
-    console.log(data);
+    console.log("Search response:", data);
 
     if (data.Response === "False") {
       moviesContainerEl.innerHTML = `
         <div style="text-align: center; padding: 50px 20px; color: #6B7280;">
           <i class="fa-solid fa-film" style="font-size: 48px; margin-bottom: 20px;"></i>
           <p style="font-size: 18px; font-weight: 600;">No movies found</p>
-          <p style="font-size: 14px;">${data.Error}</p>
+          <p style="font-size: 14px;">${
+            data.Error || "Try a different search term"
+          }</p>
+        </div>
+      `;
+      return;
+    }
+
+    if (!data.Search || data.Search.length === 0) {
+      moviesContainerEl.innerHTML = `
+        <div style="text-align: center; padding: 50px 20px; color: #6B7280;">
+          <i class="fa-solid fa-film" style="font-size: 48px; margin-bottom: 20px;"></i>
+          <p style="font-size: 18px; font-weight: 600;">No movies found</p>
+          <p style="font-size: 14px;">Try a different search term</p>
         </div>
       `;
       return;
     }
 
     let imdbIds = [];
-
     for (let movie of data.Search) {
       imdbIds.push(movie.imdbID);
     }
 
     const moviesResponse = await getMoviesByIds(imdbIds);
-    console.log(moviesResponse);
+    console.log("Movies details:", moviesResponse);
 
     moviesArrayForWatchList.push(...moviesResponse);
-
     renderMovies(moviesResponse);
-
     inputElement.value = "";
   } catch (error) {
     console.error("Error fetching movies:", error);
     moviesContainerEl.innerHTML = `
       <div style="text-align: center; padding: 50px 20px; color: #6B7280;">
-        <i class="fa-solid fa-exclamation-triangle" style="font-size: 48px; margin-bottom: 20px;"></i>
+        <i class="fa-solid fa-exclamation-triangle" style="font-size: 48px; margin-bottom: 20px; color: #EF4444;"></i>
         <p style="font-size: 18px; font-weight: 600;">Something went wrong</p>
-        <p style="font-size: 14px;">Please try again later</p>
+        <p style="font-size: 14px; margin-bottom: 10px;">Error: ${error.message}</p>
+        <p style="font-size: 12px; color: #9CA3AF;">Check the browser console for more details</p>
       </div>
     `;
   }
